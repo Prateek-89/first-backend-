@@ -341,14 +341,83 @@ $set:{
   )
 })
 
+const getuserChaneelProfile= asyncHandler(async(req,res)=>{
+const {username}=req.params
+if (!username) {
+  throw new ApiError(400,"Username is missing")
+}
+const channel= await user.aggregate ([
+  {
+    match:{
+      username:username?.toLowerCase()
+    }
+  }
+  ,
+  {
+    $lookup:{
+      from :"subscriptions",
+      localfield:"_id",
+      foreignfield:"channel",
+      as:"subscribers"
+    }
+  },{
+  $lookup:
+  {
+     from :"subscriptions",
+      localfield:"_id",
+      foreignfield:"subscriber",
+      as:"subscribedTo"
+  }
+},{
+  $addFields:{
+subscribersCount:{
+  $size:"$subscribers"
+},
+channelSubscribedToCount:{
+  $size:"$subscribedTo"
+},
+isSubscribed:{
+  $cond:{
+    $if:{
+      $in:[req.user?._id,"$subsribers.subscriber"]
+    },
+    then:true,
+    else:false
+  }
+}
+  }
+},
+{
+  $project: {
+    fullName:1,
+    username:1,
+    subscribersCount:1,
+    isSubscribed:1,
+    avatar:1,
+    email:1,
+    coverImage:1
+  }
+}
+])
+if(!channel?.length){
+  throw new ApiError(400,"channel does not found")
+
+}
+return res
+.status(200)
+.json(
+  new ApiResponse(200,channel[0],"user channel fetched successfully")
+)
+})
 export { 
   registerUser, 
   loginUser, 
-  logoutUser,
+  logoutUser, 
   refreshAccessToken ,
   changeCurrentPassword, 
   getCurrentUser,
 updateAccountDetails,
 updateUserCoverImage,
-updateUserAvatar
+updateUserAvatar,
+getuserChaneelProfile
 };
